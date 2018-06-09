@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="tinytest.js"></script>
+    <script src="app.js"></script>
+    <script>
+
+        (function(){
+            const cbCounter = {};
+            const libStore = {};
+            const valueStore = {};
+            function librarySystem(name,deps = [],cb){
+                if(deps.length>0){
+                    libStore[name] = {};
+                    libStore[name].cb=cb;
+                    libStore[name].deps = deps;
+                }else if(arguments.length > 1){
+                    libStore[name] = {};
+                    libStore[name].cb=cb;
+                    valueStore[name]=cb();
+                }else{
+                    const cbDepds = libStore[name].deps
+                    if(valueStore[name]){
+                        return valueStore[name];
+                    }else if(!cbDepds){
+                        cbCounter[name]?cbCounter[name]++:cbCounter[name]=1;
+                        return libStore[name].cb();
+                    }else{
+                        cbCounter[name]?cbCounter[name]++:cbCounter[name]=1;
+                        let argArray = []
+                        for(let dep in cbDepds){
+                            argArray.push(libStore[cbDepds[dep]].cb());
+                        }
+                        valueStore[name]=libStore[name].cb.apply(this,argArray);
+                        return valueStore[name];
+
+                    }
+                }
+            }
+              window.librarySystem = librarySystem;
+              window.cbCounter = cbCounter;
+        })() 
+
+
+
+        tests({
+        
+            'Should load function': function() {
+                librarySystem("tesT",[],() => {return 2});
+                eq(librarySystem('tesT'),2); 
+            },
+            
+            'Should load dependancy': function() {
+                
+                librarySystem("tesT2",["tesT3"],(tesT3) => {return 2 * tesT3});
+                librarySystem("tesT3",[],() => {return 2});
+                eq(librarySystem('tesT2'),4); 
+            },
+
+            'Should pass gordons test': function() {
+                librarySystem('workBlurb', ['name', 'company'], function(name, company) {
+                return name + ' works at ' + company;
+                });
+
+                librarySystem('name', [], function() {
+                return 'Gordon';
+                });
+
+                librarySystem('company', [], function() {
+                return 'Watch and Code';
+                });
+                eq(librarySystem('workBlurb'),'Gordon works at Watch and Code'); 
+            
+            },
+
+            'Callback should only run once': function() {
+                librarySystem('tesT');
+                librarySystem('tesT');
+                librarySystem('workBlurb');
+                librarySystem('tesT');
+                librarySystem('workBlurb');
+                let countArray=Object.values(cbCounter);
+                eq(Math.max(...countArray),1); 
+            
+            },
+
+
+
+
+
+        });
+    </script>
+
+
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+</html>
